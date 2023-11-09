@@ -131,7 +131,6 @@ def cvar_historic(r, level=5):
     else:
         raise TypeError("Expected r to be a Series or DataFrame")
 
-from scipy.stats import norm
 def var_gaussian(r, level=5, modified=False):
     """
     Returns the Parametric Gauusian VaR of a Series or DataFrame
@@ -357,9 +356,9 @@ def summary_stats(r, riskfree_rate=0.03):
     """
     Return a DataFrame that contains aggregated summary stats for the returns in the columns of r
     """
-    ann_r = r.aggregate(annualize_rets, periods_per_year=12)
-    ann_vol = r.aggregate(annualize_vol, periods_per_year=12)
-    ann_sr = r.aggregate(sharpe_ratio, riskfree_rate=riskfree_rate, periods_per_year=12)
+    ann_r = r.aggregate(annualize_rets, periods_per_year=252)
+    ann_vol = r.aggregate(annualize_vol, periods_per_year=252)
+    ann_sr = r.aggregate(sharpe_ratio, riskfree_rate=riskfree_rate, periods_per_year=252)
     dd = r.aggregate(lambda r: drawdown(r).Drawdown.min())
     skew = r.aggregate(skewness)
     kurt = r.aggregate(kurtosis)
