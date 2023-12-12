@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from numpy.linalg import inv
+from datetime import datetime
 import scipy.stats
 from scipy.stats import norm
 from scipy.optimize import minimize
@@ -413,8 +414,14 @@ def calculate_drawdown_duration_stats(drawdown):
     """
     dd_dates = pd.DataFrame(
         {
-            'date': drawdown.loc[drawdown.Drawdown==0].index.tolist() + [datetime.now()],
-            'prev_date': [np.nan] + drawdown.loc[drawdown.Drawdown==0].index.tolist(),
+            'date': pd.to_datetime(
+                drawdown.loc[drawdown.Drawdown == 0].index.tolist()
+                + [datetime.now()]
+            ),
+            'prev_date': pd.to_datetime(
+                [np.nan]
+                + drawdown.loc[drawdown.Drawdown == 0].index.tolist()
+            ),
         }
     )
     open_days = drawdown.index.tolist()
@@ -423,14 +430,18 @@ def calculate_drawdown_duration_stats(drawdown):
         for prev_date, date in zip(dd_dates.prev_date, dd_dates.date)
     ]
     dd_dates = dd_dates.loc[dd_dates.duration > 0]
-    longest_drawdown = dd_dates.loc[dd_dates.duration == dd_dates.duration.max()].tail(1)
+    longest_drawdown = dd_dates.loc[
+        dd_dates.duration == dd_dates.duration.max()
+    ].tail(1)
 
     return {
         'longest_drawdown': longest_drawdown.duration.values[0],
-        'start_longest_drawdown': str(longest_drawdown.prev_date.dt.date.values[0]),
+        'start_longest_drawdown': str(
+            longest_drawdown.prev_date.dt.date.values[0]
+        ),
         'end_longest_drawdown': str(longest_drawdown.date.dt.date.values[0]),
     }
-    
+
 
 def calculate_max_drawdown_stats(drawdown):
     """
