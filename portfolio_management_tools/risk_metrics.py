@@ -133,7 +133,7 @@ def cvar_historic(r, level=5):
 
 def var_gaussian(r, level=5, modified=False):
     """
-    Returns the Parametric Gauusian VaR of a Series or DataFrame
+    Returns the Parametric Gausian VaR of a Series or DataFrame
     If "modified" is True, then the modified VaR is returned,
     using the Cornish-Fisher modification
     """
@@ -374,3 +374,128 @@ def summary_stats(r, riskfree_rate=0.03):
         "Sharpe Ratio": ann_sr,
         "Max Drawdown": dd
     })
+
+
+def get_market_days_between_dates(start_date, end_date, open_days):
+    """
+    Calculate the number of market working days between two dates.
+
+    Parameters
+    ----------
+    start_date : datetime
+        The start date.
+    end_date : datetime
+        The end date.
+    open_days : list
+        Sorted list of market open days.
+
+    Returns
+    -------
+    int
+        The number of working days between the two dates.
+    """
+    return sum((day > start_date) and (day < end_date) for day in open_days)
+
+
+def calculate_drawdown_duration_stats(drawdown):
+    """
+    Calculate drawdown duration statistics.
+
+    Parameters
+    ----------
+    dd : DataFrame
+        DataFrame with drawdown data.
+
+    Returns
+    -------
+    dict
+        Dictionary with drawdown duration statistics.
+    """
+    dd_dates = pd.DataFrame(
+        {
+            'date': drawdown.loc[drawdown.Drawdown==0].index.tolist() + [datetime.now()],
+            'prev_date': [np.nan] + drawdown.loc[drawdown.Drawdown==0].index.tolist(),
+        }
+    )
+    open_days = drawdown.index.tolist()
+    dd_dates['duration'] = [
+        get_market_days_between_dates(prev_date, date, open_days)
+        for prev_date, date in zip(dd_dates.prev_date, dd_dates.date)
+    ]
+    dd_dates = dd_dates.loc[dd_dates.duration > 0]
+    longest_drawdown = dd_dates.loc[dd_dates.duration == dd_dates.duration.max()].tail(1)
+
+    return {
+        'longest_drawdown': longest_drawdown.duration.values[0],
+        'start_longest_drawdown': str(longest_drawdown.prev_date.dt.date.values[0]),
+        'end_longest_drawdown': str(longest_drawdown.date.dt.date.values[0]),
+    }
+    
+
+def calculate_max_drawdown_stats(drawdown):
+    """
+    Calculate drawdown statistics.
+
+    Parameters
+    ----------
+    drawdown : DataFrame
+        DataFrame with drawdown data.
+
+    Returns
+    -------
+    dict
+        Dictionary with drawdown statistics.
+    """
+    max_dd = drawdown.Drawdown.min()
+    max_dd_date = drawdown.loc[drawdown.Drawdown == max_dd].index[0]
+    max_dd_start = drawdown.loc[
+        (drawdown.index <= max_dd_date)
+        & (drawdown.Drawdown == 0)
+    ].tail(1).index[0]
+
+    return {
+        'max_drawdown': max_dd,
+        'max_drawdown_date': str(max_dd_date.date()),
+        'max_dd_start': max_dd_start,
+    }
+    
+
+def calculate_max_rundown_stats(returns):
+    """
+    Calculate the maximum rundown from a series of returns.
+
+    Parameters
+    ----------
+    returns : pandas.Series
+        Series of returns.
+
+    Returns
+    -------
+    float
+        Maximum rundown value.
+    """
+    rets = pd.DataFrame({'returns': returns})
+    rets['neg_rets'] = np.where(rets['returns'] < 0, 1 + rets['returns'], 1)
+
+    def rundown(x0):
+        x = np.array([1] + list(x0))
+        ones_indices = np.where(x == 1)[0]
+        assert ones_indices.size > 0
+        return np.prod(x[ones_indices[-1]:]) - 1
+
+    rets['rundown'] = rets['neg_rets'].expanding().apply(rundown)
+
+    max_rundown = rets['rundown'].min(),
+    date_end_max_rundown = rets.loc[
+        rets['rundown'] == max_rundown
+    ].index[0]
+    date_start_max_rundown = rets.loc[
+        (rets['rundown'] == 0)
+        & (rets.index < date_end_max_rundown)
+    ].index[-1]
+
+    return {
+        'max_rundown': max_rundown,
+        'date_end_max_rundown': date_end_max_rundown,
+        'date_start_max_rundown': date_start_max_rundown
+    }
