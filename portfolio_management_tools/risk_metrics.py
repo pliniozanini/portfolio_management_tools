@@ -90,9 +90,12 @@ def drawdown(return_series: pd.Series):
     wealth_index = 1000*(1+return_series).cumprod()
     previous_peaks = wealth_index.cummax()
     drawdowns = (wealth_index - previous_peaks)/previous_peaks
-    return pd.DataFrame({"Wealth": wealth_index, 
-                         "Previous Peak": previous_peaks, 
-                         "Drawdown": drawdowns})
+    return pd.DataFrame(
+        {"Wealth": wealth_index,
+         "Previous Peak": previous_peaks,
+         "Drawdown": drawdowns},
+        index=return_series.index
+    )
 
 def semideviation(r):
     """
