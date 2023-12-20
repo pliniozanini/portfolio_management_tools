@@ -499,7 +499,7 @@ def calculate_max_rundown_stats(returns):
 
     rets['rundown'] = rets['neg_rets'].expanding().apply(rundown)
 
-    max_rundown = rets['rundown'].min(),
+    max_rundown = rets['rundown'].min()
     date_end_max_rundown = rets.loc[
         rets['rundown'] == max_rundown
     ].index[0]
