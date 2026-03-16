@@ -513,3 +513,79 @@ def calculate_max_rundown_stats(returns):
         'date_end_max_rundown': date_end_max_rundown,
         'date_start_max_rundown': date_start_max_rundown
     }
+
+
+def calculate_beta(portfolio_return, benchmark_return):
+    """
+    Calculates the Beta of a portfolio or asset against a benchmark.
+    Aligns both series by index to ensure matching dates and drops missing values.
+
+    Parameters
+    ----------
+    portfolio_return : pd.Series
+        Series of asset or portfolio returns.
+    benchmark_return : pd.Series
+        Series of benchmark returns.
+
+    Returns
+    -------
+    float
+        The calculated Beta.
+    """
+    if not isinstance(portfolio_return, pd.Series) or not isinstance(benchmark_return, pd.Series):
+        raise TypeError("Both portfolio_return and benchmark_return must be pandas Series")
+
+    # Align series by index (inner join) to ensure matching dates
+    port_aligned, bench_aligned = portfolio_return.align(benchmark_return, join='inner')
+    
+    # Drop any remaining NAs
+    valid_data = pd.concat([port_aligned, bench_aligned], axis=1).dropna()
+    
+    if valid_data.empty or len(valid_data) < 2:
+        return np.nan
+
+    port_valid = valid_data.iloc[:, 0]
+    bench_valid = valid_data.iloc[:, 1]
+    
+    # Calculate Covariance matrix and Variance of benchmark
+    cov_matrix = np.cov(port_valid, bench_valid)
+    bench_var = np.var(bench_valid, ddof=1)
+    
+    if bench_var == 0:
+        return np.nan
+
+    # Beta = Covariance(port, bench) / Variance(bench)
+    beta = cov_matrix[0, 1] / bench_var
+    return beta
+
+
+def calculate_rolling_beta(portfolio_return, benchmark_return, window=252):
+    """
+    Calculates the Rolling Beta of a portfolio or asset against a benchmark over a specified window.
+
+    Parameters
+    ----------
+    portfolio_return : pd.Series
+        Series of asset or portfolio returns.
+    benchmark_return : pd.Series
+        Series of benchmark returns.
+    window : int, optional
+        Rolling window size in periods (default is 252 for ~1 year of daily data).
+
+    Returns
+    -------
+    pd.Series
+        A series of rolling betas indexed by date.
+    """
+    if not isinstance(portfolio_return, pd.Series) or not isinstance(benchmark_return, pd.Series):
+        raise TypeError("Both portfolio_return and benchmark_return must be pandas Series")
+
+    # Align series by index
+    port_aligned, bench_aligned = portfolio_return.align(benchmark_return, join='inner')
+    
+    # Use pandas rolling covariance and variance
+    rolling_cov = port_aligned.rolling(window=window).cov(bench_aligned)
+    rolling_var = bench_aligned.rolling(window=window).var()
+    
+    return rolling_cov / rolling_var
+
