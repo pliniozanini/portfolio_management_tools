@@ -90,6 +90,7 @@ def drawdown(return_series: pd.Series):
     wealth_index = 1000*(1+return_series).cumprod()
     previous_peaks = wealth_index.cummax()
     drawdowns = (wealth_index - previous_peaks)/previous_peaks
+
     return pd.DataFrame(
         {"Wealth": wealth_index,
          "Previous Peak": previous_peaks,
@@ -433,6 +434,15 @@ def calculate_drawdown_duration_stats(drawdown):
         for prev_date, date in zip(dd_dates.prev_date, dd_dates.date)
     ]
     dd_dates = dd_dates.loc[dd_dates.duration > 0]
+
+    # Handle the case where there are no drawdowns
+    if len(dd_dates) == 0:
+        return {
+            'longest_drawdown': 0,
+            'start_longest_drawdown': None,
+            'end_longest_drawdown': None,
+        }
+
     longest_drawdown = dd_dates.loc[
         dd_dates.duration == dd_dates.duration.max()
     ].tail(1)
@@ -472,7 +482,6 @@ def calculate_max_drawdown_stats(drawdown):
         'max_drawdown_date': str(max_dd_date.date()),
         'max_dd_start': max_dd_start,
     }
-    
 
 def calculate_max_rundown_stats(returns):
     """
@@ -500,6 +509,13 @@ def calculate_max_rundown_stats(returns):
     rets['rundown'] = rets['neg_rets'].expanding().apply(rundown)
 
     max_rundown = rets['rundown'].min()
+    if max_rundown ==0:
+        return {
+            'max_rundown': max_rundown,
+            'date_end_max_rundown': None,
+            'date_start_max_rundown': None
+        }
+        
     date_end_max_rundown = rets.loc[
         rets['rundown'] == max_rundown
     ].index[0]
